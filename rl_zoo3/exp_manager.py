@@ -116,14 +116,31 @@ class ExperimentManager:
         self.env_name = EnvironmentName(env_id)
         # Custom params
         self.custom_hyperparams = hyperparams
-        if (Path(__file__).parent / "hyperparams").is_dir():
+        hyperparams_dir = Path(__file__).parent / "hyperparams"
+        if hyperparams_dir.is_dir():
             # Package version
             default_path = Path(__file__).parent
         else:
             # Take the root folder
             default_path = Path(__file__).parent.parent
 
-        self.config = config or str(default_path / f"hyperparams/{self.algo}.yml")
+        if config is not None:
+            self.config = config
+        else:
+            # 默认从 algo 名字匹配同名 yaml
+            default_config_path = default_path / f"hyperparams/{self.algo}.yml"
+            if not default_config_path.is_file():
+                # 对一些“变体算法名”做回退，比如：
+                # - ppo_vmap      -> ppo.yml
+                # - ppo_backpack  -> ppo.yml
+                for suffix in ("_vmap", "_backpack"):
+                    if self.algo.endswith(suffix):
+                        base_algo = self.algo[: -len(suffix)]
+                        fallback_path = default_path / f"hyperparams/{base_algo}.yml"
+                        if fallback_path.is_file():
+                            default_config_path = fallback_path
+                            break
+            self.config = str(default_config_path)
         self.env_kwargs: dict[str, Any] = env_kwargs or {}
         self.n_timesteps = n_timesteps
         self.normalize = False

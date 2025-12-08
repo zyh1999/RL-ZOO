@@ -1,0 +1,102 @@
+HalfCheetah-v4:
+  n_timesteps: !!float 1e6
+  policy: 'MlpPolicy'
+  # Acme Default: 3e-4
+  learning_rate: !!float 3e-4
+  buffer_size: 1000000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005
+  # MPO Specifics (Acme Defaults)
+  epsilon: 0.1
+  epsilon_mean: 0.01
+  epsilon_stddev: !!float 1e-5
+  epsilon_penalty: !!float 1e-3
+  num_sample_actions: 20
+  # Network Architecture: 3 layers of 256 (Acme style)
+  policy_kwargs: "dict(net_arch=[256, 256, 256])"
+  # N-Step Return is crucial for MPO performance
+  n_steps: 5
+
+Hopper-v4:
+  n_timesteps: !!float 1e6
+  policy: 'MlpPolicy'
+  learning_rate: !!float 3e-4
+  buffer_size: 1000000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005
+  epsilon: 0.1
+  epsilon_mean: 0.01
+  epsilon_stddev: !!float 1e-5
+  epsilon_penalty: !!float 1e-3
+  num_sample_actions: 20
+  policy_kwargs: "dict(net_arch=[256, 256, 256])"
+  n_steps: 5
+
+Walker2d-v4:
+  n_timesteps: !!float 1e6
+  policy: 'MlpPolicy'
+  learning_rate: !!float 3e-4
+  buffer_size: 1000000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005
+  epsilon: 0.1
+  epsilon_mean: 0.01
+  epsilon_stddev: !!float 1e-5
+  epsilon_penalty: !!float 1e-3
+  num_sample_actions: 20
+  policy_kwargs: "dict(net_arch=[256, 256, 256])"
+  n_steps: 5
+
+Ant-v4:
+  n_timesteps: !!float 1e6
+  policy: 'MlpPolicy'
+  learning_rate: !!float 3e-4
+  buffer_size: 1000000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005
+  epsilon: 0.1
+  epsilon_mean: 0.01
+  epsilon_stddev: !!float 1e-5
+  epsilon_penalty: !!float 1e-3
+  num_sample_actions: 20
+  policy_kwargs: "dict(net_arch=[256, 256, 256])"
+  n_steps: 5
+
+Humanoid-v4:
+  n_timesteps: !!float 5e6
+  policy: 'MlpPolicy'
+  learning_rate: !!float 3e-4
+  buffer_size: 1000000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005
+  epsilon: 0.1
+  epsilon_mean: 0.01
+  epsilon_stddev: !!float 1e-5
+  epsilon_penalty: !!float 1e-3
+  # Humanoid is harder, more samples for robust expectation
+  num_sample_actions: 30
+  # Wider network for high dim state space
+  policy_kwargs: "dict(net_arch=[400, 300])"
+  n_steps: 5
+
+Pendulum-v1:
+  n_timesteps: 20000
+  policy: 'MlpPolicy'
+  learning_rate: !!float 1e-3
+  buffer_size: 20000
+  batch_size: 256
+  gamma: 0.99
+  train_freq: 1
+  gradient_steps: 1
+  learning_starts: 1000
+  epsilon: 0.05
+  epsilon_mean: 0.005
+  epsilon_stddev: !!float 1e-5
+  epsilon_penalty: !!float 1e-3
+  num_sample_actions: 20
+  policy_kwargs: "dict(net_arch=[256, 256])"
