@@ -817,9 +817,14 @@ class ExperimentManager:
         if self.verbose >= 2:
             trial_verbosity = self.verbose
 
+        # Create specific TB log for each trial
+        trial_tb_log = None
+        if self.tensorboard_log is not None:
+            trial_tb_log = os.path.join(self.tensorboard_log, f"trial_{trial.number}")
+
         model = ALGOS[self.algo](
             env=env,
-            tensorboard_log=None,
+            tensorboard_log=trial_tb_log,
             # We do not seed the trial
             seed=None,
             verbose=trial_verbosity,
@@ -895,9 +900,9 @@ class ExperimentManager:
                 "when you want to do distributed hyperparameter optimization."
             )
 
-        if self.tensorboard_log is not None:
-            warnings.warn("Tensorboard log is deactivated when running hyperparameter optimization")
-            self.tensorboard_log = None
+        # if self.tensorboard_log is not None:
+        #     warnings.warn("Tensorboard log is deactivated when running hyperparameter optimization")
+        #     self.tensorboard_log = None
 
         # TODO: eval each hyperparams several times to account for noisy evaluation
         sampler = self._create_sampler(self.sampler)
