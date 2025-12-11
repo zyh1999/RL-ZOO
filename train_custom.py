@@ -18,13 +18,13 @@ from rl_zoo3.train import train
 def sample_ppo_params_custom(trial: optuna.Trial, n_actions: int, n_envs: int, additional_args: dict) -> dict[str, Any]:
     """
     自定义的 PPO 参数采样函数
-    - 复用 RL-Zoo 默认搜索逻辑
-    - 覆盖特定的几个参数：learning_rate, batch_size, n_steps, normalize_advantage_mean
+    - 复用 RL-Zoo 默认超参数（尤其是 ppo.yml 里的 gamma / gae_lambda）
+    - 只覆盖特定的几个参数：learning_rate, batch_size, n_steps, normalize_advantage_mean/std
     - 强制设定 ent_coef = 0 和 separate_optimizers = True
     """
-    # --- 复用 hyperparams_opt.py 中的默认范围 (除了我们要覆盖的) ---
-    one_minus_gamma = trial.suggest_float("one_minus_gamma", 0.0001, 0.03, log=True)
-    one_minus_gae_lambda = trial.suggest_float("one_minus_gae_lambda", 0.0001, 0.1, log=True)
+    # --- 复用 hyperparams_opt.py 中的部分默认范围 (除了我们要覆盖/固定的) ---
+    # 注意：这里不再搜索 one_minus_gamma / one_minus_gae_lambda，
+    # 让 gamma / gae_lambda 回退到 ppo.yml 中的默认值。
     clip_range = trial.suggest_categorical("clip_range", [0.1, 0.2, 0.3, 0.4])
     # n_epochs: 改为 1-10 的整数搜索
     n_epochs = trial.suggest_int("n_epochs", 1, 10)
@@ -56,9 +56,10 @@ def sample_ppo_params_custom(trial: optuna.Trial, n_actions: int, n_envs: int, a
     # 注意：PPO 要求 n_steps * n_envs > batch_size
     n_steps = trial.suggest_categorical("n_steps", [512, 1024, 2048, 4096])
     
-    # 4. normalize_advantage_mean (是否减去均值)
-    # 对应 PPO 参数: normalize_advantage_mean
-    normalize_advantage_mean = trial.suggest_categorical("normalize_advantage_mean", [True, False])
+    # 4. normalize_advantage_mean / std
+    # 强制 mean=False，只通过 std 是否归一化来控制
+    normalize_advantage_mean = False
+    normalize_advantage_std = trial.suggest_categorical("normalize_advantage_std", [True, False])
     
     # 5. ent_coef = 0 (固定值，不搜索)
     ent_coef = 0.0
@@ -66,19 +67,9 @@ def sample_ppo_params_custom(trial: optuna.Trial, n_actions: int, n_envs: int, a
     # 6. separate_optimizers = True (固定值，不搜索)
     separate_optimizers = True
 
-    # ==========================================================================
-    # 组装返回字典
-    # ==========================================================================
-    
-    # 转换 gamma 和 gae_lambda
-    gamma = 1 - one_minus_gamma
-    gae_lambda = 1 - one_minus_gae_lambda
-    
     return {
         # --- 默认参数部分 ---
         "n_epochs": n_epochs,
-        "gamma": gamma,
-        "gae_lambda": gae_lambda,
         "clip_range": clip_range,
         "max_grad_norm": max_grad_norm,
         
@@ -91,6 +82,7 @@ def sample_ppo_params_custom(trial: optuna.Trial, n_actions: int, n_envs: int, a
         # --- PPO 类构造函数的特定参数 ---
         # 注意：这些参数必须在 PPO.__init__ 中存在
         "normalize_advantage_mean": normalize_advantage_mean,
+        "normalize_advantage_std": normalize_advantage_std,
         "separate_optimizers": separate_optimizers,
     }
 

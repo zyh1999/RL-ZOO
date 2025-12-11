@@ -17,13 +17,14 @@ cd "${ROOT_DIR}" || {
 }
 
 # --- Configuration ---
-N_WORKERS=4
-STORAGE="sqlite:///logs/breakout_manual.db"
-STUDY_NAME="breakout_manual_v1"
+N_WORKERS=2
+STORAGE="sqlite:///logs/breakout_manual.db"          # 复用之前的数据库
+STUDY_NAME="breakout_manual_normStd_v1"             # 新的 study，用于 adv_mean=False, adv_std 搜索
 ALGO="ppo"
 ENV="BreakoutNoFrameskip-v4"
 N_TIMESTEPS=10000000
-N_TRIALS=20
+N_TRIALS=100000000                                  # 单 worker 理论上限，实际由 MAX_TOTAL_TRIALS 截断
+MAX_TOTAL_TRIALS=40                                 # 全局最多 20 个 trial
 WANDB_PROJECT="Breakout-PPO-Search"
 
 # Ensure log directory exists (相对于项目根目录)
@@ -52,7 +53,7 @@ trap cleanup INT TERM
 
 echo "[Manager] Starting $N_WORKERS distributed workers for study: $STUDY_NAME"
 echo "[Manager] Storage: $STORAGE"
-echo "[Manager] Logs will be written to logs/worker_*.log"
+echo "[Manager] Logs will be written to logs/worker_${STUDY_NAME}_*.log"
 
 # --- Launch Workers ---
 for ((i=1; i<=N_WORKERS; i++)); do
@@ -64,9 +65,11 @@ for ((i=1; i<=N_WORKERS; i++)); do
     CUDA_VISIBLE_DEVICES='1' python train_custom.py \
         --algo "$ALGO" \
         --env "$ENV" \
+        --vec-env subproc \
         -n "$N_TIMESTEPS" \
         -optimize \
         --n-trials "$N_TRIALS" \
+        --max-total-trials "$MAX_TOTAL_TRIALS" \
         --sampler tpe \
         --pruner median \
         --verbose 1 \
@@ -74,7 +77,7 @@ for ((i=1; i<=N_WORKERS; i++)); do
         --wandb-project-name "$WANDB_PROJECT" \
         --storage "$STORAGE" \
         --study-name "$STUDY_NAME" \
-        > "logs/worker_$i.log" 2>&1 &
+        > "logs/worker_${STUDY_NAME}_$i.log" 2>&1 &
     
     # Save the background process PID
     pids+=($!)
