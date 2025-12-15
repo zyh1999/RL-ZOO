@@ -17,6 +17,9 @@ export torch_num_threads=1
 
 cd RL-ZOO
 
+# 激活虚拟环境
+source ~/.RLvenv/bin/activate
+
 bash scripts/custom_searches/run_sweep_HalfCheetah_v4.sh
 
 

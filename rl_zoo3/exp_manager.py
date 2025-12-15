@@ -133,7 +133,7 @@ class ExperimentManager:
                 # 对一些“变体算法名”做回退，比如：
                 # - ppo_vmap      -> ppo.yml
                 # - ppo_backpack  -> ppo.yml
-                for suffix in ("_vmap", "_backpack"):
+                for suffix in ("_vmap", "_backpack", "_critic_warmup"):
                     if self.algo.endswith(suffix):
                         base_algo = self.algo[: -len(suffix)]
                         fallback_path = default_path / f"hyperparams/{base_algo}.yml"

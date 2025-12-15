@@ -90,6 +90,9 @@ for SETTING in "${SETTINGS[@]}"; do
             > "logs/worker_${STUDY_NAME}_$i.log" 2>&1 &
         
         pids+=($!)
+
+    # 避免多个 worker 同时初始化 SQLite，稍作延迟
+    sleep 3
     done
 
     echo "Workers launched. PIDs: ${pids[*]}"

@@ -16,6 +16,7 @@ from sb3_contrib import ARS, QRDQN, TQC, TRPO, CrossQ, RecurrentPPO
 from stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3, MPO
 from stable_baselines3.ppo.ppo_v_map import PPOVmap
 from stable_baselines3.ppo.ppo_backpack import PPOBackpack
+from stable_baselines3.ppo.ppo_critic_warmup import PPOCriticWarmup
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.env_util import make_vec_env
@@ -32,6 +33,7 @@ ALGOS: dict[str, type[BaseAlgorithm]] = {
     "ppo": PPO,
     "ppo_vmap": PPOVmap,
     "ppo_backpack": PPOBackpack,
+    "ppo_critic_warmup": PPOCriticWarmup,
     "sac": SAC,
     "td3": TD3,
     "mpo": MPO,
