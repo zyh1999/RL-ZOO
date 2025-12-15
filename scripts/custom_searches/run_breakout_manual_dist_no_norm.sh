@@ -23,9 +23,9 @@ cd "${ROOT_DIR}" || {
 }
 
 # --- Configuration ---
-N_WORKERS=2
+N_WORKERS=4
 STORAGE="sqlite:///logs/breakout_manual.db"          # 复用之前的数据库
-STUDY_NAME="breakout_manual_normStd_v1"             # 新的 study，用于 adv_mean=False, adv_std 搜索
+STUDY_NAME="breakout_manual_noNorm_v1"             # 新的 study，用于 adv_mean=False, adv_std 搜索
 ALGO="ppo"
 ENV="BreakoutNoFrameskip-v4"
 N_TIMESTEPS=10000000
@@ -69,7 +69,9 @@ for ((i=1; i<=N_WORKERS; i++)); do
     # We execute train_custom.py without --n-jobs (defaulting to 1)
     # The --storage and --study-name arguments ensure they coordinate via the DB.
     # Standard output and error are redirected to individual log files.
-    CUDA_VISIBLE_DEVICES='1' python train_custom.py \
+    # 计算 GPU ID: (i-1) % 2 => worker 1->gpu0, worker 2->gpu1, worker 3->gpu0, worker 4->gpu1
+    GPU_ID=$(( (i - 1) % 2 ))
+    CUDA_VISIBLE_DEVICES="$GPU_ID" python train_custom.py \
         --algo "$ALGO" \
         --env "$ENV" \
         --vec-env subproc \

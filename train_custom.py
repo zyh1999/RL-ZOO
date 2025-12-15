@@ -56,10 +56,23 @@ def sample_ppo_params_custom(trial: optuna.Trial, n_actions: int, n_envs: int, a
     # 注意：PPO 要求 n_steps * n_envs > batch_size
     n_steps = trial.suggest_categorical("n_steps", [512, 1024, 2048, 4096])
     
-    # 4. normalize_advantage_mean / std
-    # 强制 mean=False，只通过 std 是否归一化来控制
-    normalize_advantage_mean = False
-    normalize_advantage_std = trial.suggest_categorical("normalize_advantage_std", [True, False])
+    # 获取环境变量控制的开关，默认为 None
+    force_adv_mean = os.environ.get("FORCE_ADV_MEAN")
+    force_adv_std = os.environ.get("FORCE_ADV_STD")
+
+    # 4. normalize_advantage_mean
+    if force_adv_mean is not None:
+        normalize_advantage_mean = (force_adv_mean.lower() == "true")
+    else:
+        # 默认：强制关闭 (兼容你之前的 noNorm 逻辑)
+        normalize_advantage_mean = False
+
+    # 5. normalize_advantage_std
+    if force_adv_std is not None:
+        normalize_advantage_std = (force_adv_std.lower() == "true")
+    else:
+        # 默认：强制关闭
+        normalize_advantage_std = False
     
     # 5. ent_coef = 0 (固定值，不搜索)
     ent_coef = 0.0
