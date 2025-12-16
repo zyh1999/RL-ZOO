@@ -17,6 +17,7 @@ from stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3, MPO
 from stable_baselines3.ppo.ppo_v_map import PPOVmap
 from stable_baselines3.ppo.ppo_backpack import PPOBackpack
 from stable_baselines3.ppo.ppo_critic_warmup import PPOCriticWarmup
+from stable_baselines3.ppo.ppo_adv_decouple import PPOAdvDecouple
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.env_util import make_vec_env
@@ -34,6 +35,7 @@ ALGOS: dict[str, type[BaseAlgorithm]] = {
     "ppo_vmap": PPOVmap,
     "ppo_backpack": PPOBackpack,
     "ppo_critic_warmup": PPOCriticWarmup,
+    "ppo_adv_decouple": PPOAdvDecouple,
     "sac": SAC,
     "td3": TD3,
     "mpo": MPO,
@@ -469,8 +471,12 @@ class StoreDict(argparse.Action):
         for arguments in values:
             key = arguments.split(":")[0]
             value = ":".join(arguments.split(":")[1:])
-            # Evaluate the string as python code
-            arg_dict[key] = eval(value)
+            # Evaluate the string as python code.
+            # If eval fails (e.g. passing a path like logs/clip_traces), fallback to raw string.
+            try:
+                arg_dict[key] = eval(value)
+            except (NameError, SyntaxError):
+                arg_dict[key] = value
         setattr(namespace, self.dest, arg_dict)
 
 

@@ -43,3 +43,4 @@ env.bak/
 venv.bak/
 stable-baselines3/
 log*/
+plots/

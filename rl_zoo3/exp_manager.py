@@ -131,9 +131,11 @@ class ExperimentManager:
             default_config_path = default_path / f"hyperparams/{self.algo}.yml"
             if not default_config_path.is_file():
                 # 对一些“变体算法名”做回退，比如：
-                # - ppo_vmap      -> ppo.yml
-                # - ppo_backpack  -> ppo.yml
-                for suffix in ("_vmap", "_backpack", "_critic_warmup"):
+                # - ppo_vmap         -> ppo.yml
+                # - ppo_backpack     -> ppo.yml
+                # - ppo_critic_warmup-> ppo.yml
+                # - ppo_adv_decouple -> ppo.yml
+                for suffix in ("_vmap", "_backpack", "_critic_warmup", "_adv_decouple"):
                     if self.algo.endswith(suffix):
                         base_algo = self.algo[: -len(suffix)]
                         fallback_path = default_path / f"hyperparams/{base_algo}.yml"
