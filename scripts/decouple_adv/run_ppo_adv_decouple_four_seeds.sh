@@ -4,10 +4,20 @@
 # - 4 seeds: 9, 1, 2, 3
 # - 前两个种子用 GPU 0，后两个用 GPU 1
 # - 默认超参回退到 ppo.yml；仅在 -params 中显式打开解耦相关开关
+# - 三个可选开关：MASK_MEAN（clip_mask_use_adv_mean）、LOSS_MEAN（loss_use_adv_mean）、LOSS_STD（loss_use_adv_std）
+#   默认都为 True（标准 adv_norm）；可在命令行 export 覆盖，如：
+#   MASK_MEAN=False LOSS_MEAN=False LOSS_STD=True ./run_ppo_adv_decouple_four_seeds.sh
+
+# 开关默认值：都开（True）
+MASK_MEAN=${MASK_MEAN:-True}
+LOSS_MEAN=${LOSS_MEAN:-True}
+LOSS_STD=${LOSS_STD:-True}
 
 env_id="BreakoutNoFrameskip-v4"
 seeds=(9 1 2 3)
 pids=()
+
+echo "当前开关：MASK_MEAN=${MASK_MEAN}, LOSS_MEAN=${LOSS_MEAN}, LOSS_STD=${LOSS_STD}"
 
 trap 'echo "捕获 Ctrl+C，正在终止所有子进程..."; \
       for pid in "${pids[@]}"; do \
@@ -24,27 +34,30 @@ for i in "${!seeds[@]}"; do
     gpu=1
   fi
 
-  echo "启动 seed $seed on GPU $gpu"
+  run_name="ppo_adv_decouple_maskMean${MASK_MEAN}_lossMean${LOSS_MEAN}_lossStd${LOSS_STD}"
+
+  echo "启动 seed $seed on GPU $gpu | Run: $run_name"
   CUDA_VISIBLE_DEVICES="$gpu" python train.py \
     --seed "$seed" \
     --algo ppo_adv_decouple \
     --env "$env_id" \
     --vec-env subproc \
     --track \
-    --wandb-run-extra-name "ppo_adv_decouple_mean_mask_no_mean_loss_${env_id}_seed${seed}" \
+    --wandb-run-extra-name "$run_name" \
     --wandb-project-name sb3 \
     --wandb-entity agent-lab-ppo \
     -params normalize_advantage:True \
             normalize_advantage_mean:True \
             normalize_advantage_std:True \
             separate_optimizers:True \
-            loss_use_adv_mean:False \
-            loss_use_adv_std:True \
-            clip_mask_use_adv_mean:True \
+            loss_use_adv_mean:${LOSS_MEAN} \
+            loss_use_adv_std:${LOSS_STD} \
+            clip_mask_use_adv_mean:${MASK_MEAN} \
     &
 
   pids+=($!)
 done
 
 wait "${pids[@]}"
+
 
