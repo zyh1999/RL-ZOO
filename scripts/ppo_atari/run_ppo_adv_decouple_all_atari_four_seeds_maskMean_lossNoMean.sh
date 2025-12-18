@@ -1,15 +1,16 @@
 #!/bin/bash
 
-# 使用 A2C 默认 hyperparams（a2c.yml 中的 atari 段），并显式开启 advantage 归一化：
-#   normalize_advantage: True
+# 使用 PPOAdvDecouple 在 Atari 上跑 4 个环境 × 4 seeds：
+# 这个脚本对应解耦组合：
+#   clip_mask_use_adv_mean: True   （mask 减 mean）
+#   loss_use_adv_mean:      False  （loss 不减 mean）
+#   loss_use_adv_std:       True   （loss 除 std）
+#
+# 其他超参沿用 ppo.yml 中 atari 段（通过 rl-zoo3 的默认回退机制）：
+#   normalize_advantage:      True
 #   normalize_advantage_mean: True
-#   normalize_advantage_std: True
-# 对若干 Atari 任务，每个任务 4 个种子
-# 目前选择 4 个 Atari 任务：
-#   BreakoutNoFrameskip-v4   （经典基准）
-#   BeamRiderNoFrameskip-v4  （中等难度，reward 密集）
-#   QbertNoFrameskip-v4      （中高难度，策略复杂度更高）
-#   SeaquestNoFrameskip-v4   （探索/稀疏奖励更重，最难）
+#   normalize_advantage_std:  True
+#   separate_optimizers:      True
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
@@ -26,6 +27,8 @@ set -e
 seeds=(9 1 2 3)
 # 这里只跑 4 个代表性的 Atari 任务
 atari_envs=(
+  "BreakoutNoFrameskip-v4"
+  "BeamRiderNoFrameskip-v4"
   "QbertNoFrameskip-v4"
   "SeaquestNoFrameskip-v4"
 )
@@ -41,7 +44,7 @@ trap 'echo "Caught Ctrl+C, killing all runs..."; \
 
 for env_id in "${atari_envs[@]}"; do
   echo "============================"
-  echo "Starting env: $env_id (A2C default hyperparams + adv norm mean+std, 4 seeds, GPUs 0/1)"
+  echo "Starting env: $env_id (PPOAdvDecouple mask-mean / loss-noMean, 4 seeds, GPUs 0/1)"
   echo "============================"
 
   for i in "${!seeds[@]}"; do
@@ -52,12 +55,12 @@ for env_id in "${atari_envs[@]}"; do
       gpu=1
     fi
 
-    run_name="a2c_meanStd_adam"
+    run_name="ppoAdvDecouple_maskMean_lossNoMean_lossStd"
     echo "  Launching seed $seed for $env_id on GPU ${gpu} | Run: $run_name"
 
     CUDA_VISIBLE_DEVICES="${gpu}" python train.py \
       --seed "${seed}" \
-      --algo a2c \
+      --algo ppo_adv_decouple \
       --env "${env_id}" \
       --vec-env subproc \
       --track \
@@ -67,6 +70,10 @@ for env_id in "${atari_envs[@]}"; do
       -params normalize_advantage:True \
               normalize_advantage_mean:True \
               normalize_advantage_std:True \
+              separate_optimizers:True \
+              loss_use_adv_mean:False \
+              loss_use_adv_std:True \
+              clip_mask_use_adv_mean:True \
       &
 
     pids+=($!)
@@ -80,4 +87,7 @@ for env_id in "${atari_envs[@]}"; do
 
 done
 
-echo "All Atari A2C runs finished."
+echo "All Atari PPOAdvDecouple mask-mean / loss-noMean runs finished."
+
+
+

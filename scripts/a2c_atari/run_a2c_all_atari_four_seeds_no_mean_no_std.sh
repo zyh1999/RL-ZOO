@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# 使用 A2C 默认 hyperparams（a2c.yml 中的 atari 段），并显式开启 advantage 归一化：
-#   normalize_advantage: True
-#   normalize_advantage_mean: True
-#   normalize_advantage_std: True
-# 对若干 Atari 任务，每个任务 4 个种子
-# 目前选择 4 个 Atari 任务：
+# 使用 A2C 默认 hyperparams（a2c.yml 中的 atari 段）+ 自定义 advantage 归一化：
+#   - normalize_advantage: True
+#   - normalize_advantage_mean: False  （不减去 mean）
+#   - normalize_advantage_std: True   （只除以 std）
+# 对 4 个代表性的 Atari 任务，每个任务 4 个 seeds，在两张 GPU 上并行跑。
+# 任务列表：
 #   BreakoutNoFrameskip-v4   （经典基准）
 #   BeamRiderNoFrameskip-v4  （中等难度，reward 密集）
 #   QbertNoFrameskip-v4      （中高难度，策略复杂度更高）
@@ -26,6 +26,7 @@ set -e
 seeds=(9 1 2 3)
 # 这里只跑 4 个代表性的 Atari 任务
 atari_envs=(
+  "BeamRiderNoFrameskip-v4"
   "QbertNoFrameskip-v4"
   "SeaquestNoFrameskip-v4"
 )
@@ -41,7 +42,7 @@ trap 'echo "Caught Ctrl+C, killing all runs..."; \
 
 for env_id in "${atari_envs[@]}"; do
   echo "============================"
-  echo "Starting env: $env_id (A2C default hyperparams + adv norm mean+std, 4 seeds, GPUs 0/1)"
+  echo "Starting env: $env_id (A2C default hyperparams + no-mean advnorm, 4 seeds, GPUs 0/1)"
   echo "============================"
 
   for i in "${!seeds[@]}"; do
@@ -52,7 +53,7 @@ for env_id in "${atari_envs[@]}"; do
       gpu=1
     fi
 
-    run_name="a2c_meanStd_adam"
+    run_name="a2c_noMean_noStd_adam"
     echo "  Launching seed $seed for $env_id on GPU ${gpu} | Run: $run_name"
 
     CUDA_VISIBLE_DEVICES="${gpu}" python train.py \
@@ -65,8 +66,8 @@ for env_id in "${atari_envs[@]}"; do
       --wandb-project-name sb3 \
       --wandb-entity agent-lab-ppo \
       -params normalize_advantage:True \
-              normalize_advantage_mean:True \
-              normalize_advantage_std:True \
+              normalize_advantage_mean:False \
+              normalize_advantage_std:False \
       &
 
     pids+=($!)
@@ -80,4 +81,6 @@ for env_id in "${atari_envs[@]}"; do
 
 done
 
-echo "All Atari A2C runs finished."
+echo "All Atari A2C no-mean-no-std runs finished."
+
+
