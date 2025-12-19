@@ -12,7 +12,7 @@ atari:
   clip_range: 0.1
   vf_coef: 0.5
   ent_coef: 0.01
-   max_grad_norm: 1e9
+  max_grad_norm: 1e9
 
 # Tuned
 Pendulum-v1:
