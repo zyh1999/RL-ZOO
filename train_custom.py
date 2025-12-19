@@ -28,7 +28,7 @@ def sample_ppo_params_custom(trial: optuna.Trial, n_actions: int, n_envs: int, a
     clip_range = trial.suggest_categorical("clip_range", [0.1, 0.2, 0.3, 0.4])
     # n_epochs: 改为 1-10 的整数搜索
     n_epochs = trial.suggest_int("n_epochs", 1, 10)
-    max_grad_norm = trial.suggest_float("max_grad_norm", 0.5, 5)
+    # max_grad_norm：不再搜索，回退到 ppo.yml / 算法默认值
     
     # 网络架构默认逻辑
     # net_arch_type = trial.suggest_categorical("net_arch", ["tiny", "small", "medium"])
@@ -84,7 +84,6 @@ def sample_ppo_params_custom(trial: optuna.Trial, n_actions: int, n_envs: int, a
         # --- 默认参数部分 ---
         "n_epochs": n_epochs,
         "clip_range": clip_range,
-        "max_grad_norm": max_grad_norm,
         
         # --- 自定义部分 ---
         "learning_rate": learning_rate,
@@ -97,6 +96,25 @@ def sample_ppo_params_custom(trial: optuna.Trial, n_actions: int, n_envs: int, a
         "normalize_advantage_mean": normalize_advantage_mean,
         "normalize_advantage_std": normalize_advantage_std,
         "separate_optimizers": separate_optimizers,
+    }
+
+
+# ==============================================================================
+# 自定义 A2C 搜索空间：只搜索 learning_rate 和 ent_coef
+# 其余超参全部回退到 a2c.yml / 算法默认值
+# ==============================================================================
+def sample_a2c_params_custom(trial: optuna.Trial, n_actions: int, n_envs: int, additional_args: dict) -> dict[str, Any]:
+    """
+    自定义的 A2C 参数采样函数
+    - 只搜索 learning_rate 和 ent_coef
+    - 不改 n_steps / gamma / gae_lambda / max_grad_norm / net_arch 等，其它都用 a2c.yml 默认
+    """
+    learning_rate = trial.suggest_float("learning_rate", 1e-5, 2e-3, log=True)
+    ent_coef = trial.suggest_float("ent_coef", 1e-6, 0.1, log=True)
+
+    return {
+        "learning_rate": learning_rate,
+        "ent_coef": ent_coef,
     }
 
 def print_top_k_trials(algo, env_id, k=5):
@@ -155,6 +173,8 @@ def print_top_k_trials(algo, env_id, k=5):
 # ==============================================================================
 print("--> [Custom] 已注册自定义 PPO 搜索空间 (包含 separate_optimizers)")
 hyperparams_opt.HYPERPARAMS_SAMPLER["ppo"] = sample_ppo_params_custom
+print("--> [Custom] 已注册自定义 A2C 搜索空间 (只搜索 learning_rate 与 ent_coef)")
+hyperparams_opt.HYPERPARAMS_SAMPLER["a2c"] = sample_a2c_params_custom
 
 # ==============================================================================
 # 启动训练
