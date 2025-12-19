@@ -9,8 +9,12 @@
 #   MASK_MEAN=False LOSS_MEAN=False LOSS_STD=True ./run_ppo_adv_decouple_four_seeds.sh
 
 # 开关默认值：都开（True）
-MASK_MEAN=${MASK_MEAN:-True}
-LOSS_MEAN=${LOSS_MEAN:-True}
+# 优先级：命令行参数 > 环境变量 > 默认 True
+# 用法示例：
+#   ./run_ppo_adv_decouple_four_seeds.sh False True   # MASK_MEAN=False, LOSS_MEAN=True, LOSS_STD 默认/环境变量
+#   MASK_MEAN=False LOSS_MEAN=False ./run_ppo_adv_decouple_four_seeds.sh  # 仍然兼容原来的环境变量写法
+MASK_MEAN=${1:-${MASK_MEAN:-True}}
+LOSS_MEAN=${2:-${LOSS_MEAN:-True}}
 LOSS_STD=${LOSS_STD:-True}
 
 env_id="BreakoutNoFrameskip-v4"
