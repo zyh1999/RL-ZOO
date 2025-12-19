@@ -36,7 +36,7 @@ for i in "${!seeds[@]}"; do
     --vec-env subproc \
     --track \
     --wandb-run-extra-name a2c_ram_vector_sep_optim_adam_normadv \
-    --wandb-project-name sb3 \
+    --wandb-project-name sb3_new \
     --wandb-entity agent-lab-ppo \
     -params policy:'MlpPolicy' \
             n_steps:5 \

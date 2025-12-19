@@ -52,7 +52,7 @@ for env_id in "${atari_envs[@]}"; do
       gpu=1
     fi
 
-    run_name="a2c_meanStd_adam"
+    run_name="a2c_meanStd_adam_nogradnorm"
     echo "  Launching seed $seed for $env_id on GPU ${gpu} | Run: $run_name"
 
     CUDA_VISIBLE_DEVICES="${gpu}" python train.py \
@@ -62,7 +62,7 @@ for env_id in "${atari_envs[@]}"; do
       --vec-env subproc \
       --track \
       --wandb-run-extra-name "${run_name}" \
-      --wandb-project-name sb3 \
+      --wandb-project-name sb3_new \
       --wandb-entity agent-lab-ppo \
       -params normalize_advantage:True \
               normalize_advantage_mean:True \

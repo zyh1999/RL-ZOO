@@ -66,7 +66,7 @@ for env_id in "${atari_envs[@]}"; do
       --vec-env subproc \
       --track \
       --wandb-run-extra-name "${run_name}" \
-      --wandb-project-name sb3 \
+      --wandb-project-name sb3_new \
       --wandb-entity agent-lab-ppo \
       -params normalize_advantage:True \
               normalize_advantage_mean:True \

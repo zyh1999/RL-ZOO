@@ -28,7 +28,7 @@ ENV="BreakoutNoFrameskip-v4"
 N_TIMESTEPS=10000000
 N_TRIALS=100000000
 MAX_TOTAL_TRIALS=40
-WANDB_PROJECT="Breakout-A2C-Search"
+WANDB_PROJECT="Breakout-A2C-Search_new"
 WANDB_ENTITY="agent-lab-ppo"
 
 mkdir -p logs

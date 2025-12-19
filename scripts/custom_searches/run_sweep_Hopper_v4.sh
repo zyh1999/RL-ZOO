@@ -19,7 +19,7 @@ N_WORKERS=4
 N_TIMESTEPS=10000000        # 10M
 N_TRIALS=100000000          # Local budget (inf)
 MAX_TOTAL_TRIALS=20         # Global budget
-WANDB_PROJECT="Benchmark-PPO-Sweep"
+WANDB_PROJECT="Benchmark-PPO-Sweep_new"
 WANDB_ENTITY="agent-lab-ppo"
 
 # Settings: (Name  Mean  Std)

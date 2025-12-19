@@ -31,7 +31,7 @@ ENV="BreakoutNoFrameskip-v4"
 N_TIMESTEPS=10000000
 N_TRIALS=100000000                                  # 单 worker 理论上限，实际由 MAX_TOTAL_TRIALS 截断
 MAX_TOTAL_TRIALS=40                                 # 全局最多 20 个 trial
-WANDB_PROJECT="Breakout-PPO-Search"
+WANDB_PROJECT="Breakout-PPO-Search_new"
 WANDB_ENTITY="agent-lab-ppo"
 
 # Ensure log directory exists (相对于项目根目录)
