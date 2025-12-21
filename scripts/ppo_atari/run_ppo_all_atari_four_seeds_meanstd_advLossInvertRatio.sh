@@ -56,7 +56,7 @@ for env_id in "${atari_envs[@]}"; do
       gpu=1
     fi
 
-    run_name="ppo_meanStd_advLossInvertRatio"
+    run_name="ppo_meanStd_advLoss_positive_invertRatio"
     echo "  Launching seed $seed for $env_id on GPU ${gpu} | Run: $run_name"
 
     CUDA_VISIBLE_DEVICES="${gpu}" python train.py \

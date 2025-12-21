@@ -24,7 +24,7 @@ cd "${ROOT_DIR}" || {
 }
 
 # --- Configuration (默认：noNorm，normalize_advantage=False) ---
-N_WORKERS=4
+N_WORKERS=2
 STORAGE="sqlite:///logs/breakout_a2c_manual.db"
 STUDY_NAME="breakout_a2c_manual_noNorm_v1"
 ALGO="a2c"

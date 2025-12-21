@@ -17,7 +17,7 @@ cd "${ROOT_DIR}" || {
   exit 1
 }
 
-N_WORKERS=4
+N_WORKERS=2
 STORAGE="sqlite:///logs/breakout_a2c_manual.db"
 STUDY_NAME="breakout_a2c_manual_noMean_Std_v1"
 ALGO="a2c"
