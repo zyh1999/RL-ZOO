@@ -1,10 +1,10 @@
 #!/bin/bash
-
+#
 # 使用 PPO Atari 超参（ppo.yml 中的 atari 段）+ advantage 归一化（mean+std），
 # 再额外打开新加的开关：
-#   adv_loss_remove_ratio: True
-# 含义：clip mask 仍然用带 ratio 的 PPO surrogate，但最终策略损失把 min(...) 除回 ratio，
-# 让“真 loss”更接近只依赖 advantage 的形状。
+#   adv_loss_invert_ratio: True
+# 含义：clip mask 仍然用带 ratio 的 PPO surrogate，但最终策略损失把 min(...) 除以 ratio^2，
+# 让“真 loss”变成 -Adv / ratio 的形状（类似于 Archer 的 Swap Positive 机制，这里应用到全局）。
 #
 # 任务：4 个 Atari 环境 × 4 seeds，在两张 GPU 上并行跑。
 # 环境列表：
@@ -45,7 +45,7 @@ trap 'echo "Caught Ctrl+C, killing all runs..."; \
 
 for env_id in "${atari_envs[@]}"; do
   echo "============================"
-  echo "Starting env: $env_id (PPO mean+std + adv_loss_remove_ratio, 4 seeds, GPUs 0/1)"
+  echo "Starting env: $env_id (PPO mean+std + adv_loss_invert_ratio, 4 seeds, GPUs 0/1)"
   echo "============================"
 
   for i in "${!seeds[@]}"; do
@@ -56,7 +56,7 @@ for env_id in "${atari_envs[@]}"; do
       gpu=1
     fi
 
-    run_name="ppo_meanStd_advLossNoRatio_no_eps"
+    run_name="ppo_meanStd_advLossInvertRatio"
     echo "  Launching seed $seed for $env_id on GPU ${gpu} | Run: $run_name"
 
     CUDA_VISIBLE_DEVICES="${gpu}" python train.py \
@@ -72,7 +72,7 @@ for env_id in "${atari_envs[@]}"; do
               normalize_advantage_mean:True \
               normalize_advantage_std:True \
               separate_optimizers:True \
-              adv_loss_remove_ratio:True \
+              adv_loss_invert_ratio:True \
       &
 
     pids+=($!)
@@ -86,7 +86,5 @@ for env_id in "${atari_envs[@]}"; do
 
 done
 
-echo "All Atari PPO mean+std + adv_loss_remove_ratio runs finished."
-
-
+echo "All Atari PPO mean+std + adv_loss_invert_ratio runs finished."
 
