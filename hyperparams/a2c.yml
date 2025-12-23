@@ -12,7 +12,7 @@ atari:
   ent_coef: 0.01
   vf_coef: 0.25
   policy_kwargs: "dict(optimizer_class=get_class_by_name('torch.optim.Adam'))"
-  max_grad_norm: 1e9
+  #max_grad_norm: 1e9
 
 CartPole-v1:
   n_envs: 8
