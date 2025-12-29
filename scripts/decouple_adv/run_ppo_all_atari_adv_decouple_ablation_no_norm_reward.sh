@@ -1,23 +1,25 @@
 #!/bin/bash
 #
-# PPO Adv Decouple Ablation Study (Slow Critic Update)
+# PPO Adv Decouple Ablation Study (4 seeds per config)
+# With NO REWARD NORMALIZATION
 # 
 # 任务：
 #   遍历 4 个 Atari 环境
 #   测试 4 种 Decouple 配置
-#   在 slow_critic_update_interval=5 的情况下进行对比
 #   每个配置跑 4 个 seed
 #
 # 运行模式:
-#   bash run_ppo_all_atari_adv_decouple_slow_critic.sh [CONCURRENCY]
+#   bash run_ppo_all_atari_adv_decouple_ablation_no_norm_reward.sh [CONCURRENCY]
 #   
 #   CONCURRENCY (默认 2): 每次并行跑几种配置。
 #     - 1: 每次跑 1 个配置 (4 进程), 最稳妥
 #     - 2: 每次跑 2 个配置 (8 进程), 默认
+#     - 4: 一次跑完所有配置 (16 进程), 需要大显存/多卡
 #
 # GPU 分配策略：
 #   脚本假定有 2 张卡 (GPU 0, 1)。
 #   所有并行任务会自动在 0/1 之间轮询分配。
+#
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
@@ -30,16 +32,13 @@ set -e
 # 参数：每次并行的配置数量
 CONCURRENCY=${1:-2}
 
-# 设置 Critic 更新间隔
-SLOW_INTERVAL=20
-
 # 定义所有 4 种配置 (Name MASK_MEAN LOSS_MEAN)
 # LOSS_STD 默认为 True
 ALL_CONFIGS=(
-  "baseline_slow${SLOW_INTERVAL}      True  True"
-  "noMaskMean_slow${SLOW_INTERVAL}    False True"
-  "noLossMean_slow${SLOW_INTERVAL}    True  False"
-  "allNoMean_slow${SLOW_INTERVAL}     False False"
+  "baseline      True  True"
+  "noMaskMean    False True"
+  "noLossMean    True  False"
+  "allNoMean     False False"
 )
 
 seeds=(9 1 2 3)
@@ -62,7 +61,7 @@ trap 'echo "Caught Ctrl+C, killing all runs..."; \
       wait; \
       echo "All runs killed."' INT
 
-echo "Starting Slow Critic Ablation Study (Interval=${SLOW_INTERVAL}) with CONCURRENCY=$CONCURRENCY"
+echo "Starting Ablation Study (No Reward Norm) with CONCURRENCY=$CONCURRENCY"
 
 # 外层循环：遍历环境（环境间串行，保证显存释放）
 for env_id in "${atari_envs[@]}"; do
@@ -84,7 +83,7 @@ for env_id in "${atari_envs[@]}"; do
       read -r CONFIG_NAME MASK_MEAN LOSS_MEAN <<< "$config_str"
       LOSS_STD="True"
 
-      echo "    -> Launching Config: $CONFIG_NAME (MASK_MEAN=$MASK_MEAN, LOSS_MEAN=$LOSS_MEAN, INTERVAL=$SLOW_INTERVAL)"
+      echo "    -> Launching Config: $CONFIG_NAME (MASK_MEAN=$MASK_MEAN, LOSS_MEAN=$LOSS_MEAN)"
 
       # 为该配置启动 4 个 seed
       for s_idx in "${!seeds[@]}"; do
@@ -100,9 +99,10 @@ for env_id in "${atari_envs[@]}"; do
         global_job_id=$(( cfg_idx * 4 + s_idx ))
         gpu=$(( global_job_id % 2 ))
 
-        run_name="ppo_decouple_${CONFIG_NAME}"
+        run_name="ppo_decouple_${CONFIG_NAME}_no_norm_reward"
         
         # 启动训练进程
+        # 注意：在 -params 中添加 normalize 参数来禁用 reward normalization
         CUDA_VISIBLE_DEVICES="${gpu}" python train.py \
           --seed "${seed}" \
           --algo ppo_adv_decouple \
@@ -112,17 +112,16 @@ for env_id in "${atari_envs[@]}"; do
           --wandb-run-extra-name "${run_name}" \
           --wandb-project-name sb3_new \
           --wandb-entity agent-lab-ppo \
-          -params normalize_advantage:True \
+          -params normalize:"{'norm_obs':True,'norm_reward':False}" \
+                  normalize_advantage:True \
                   normalize_advantage_mean:True \
                   normalize_advantage_std:True \
                   separate_optimizers:True \
                   loss_use_adv_mean:${LOSS_MEAN} \
                   loss_use_adv_std:${LOSS_STD} \
                   clip_mask_use_adv_mean:${MASK_MEAN} \
-                  slow_critic_update_interval:${SLOW_INTERVAL} \
-          > /dev/null 2>&1 &  # 减少输出干扰
-        
-        # 保存 PID
+          > /dev/null 2>&1 &  # 减少输出干扰，或重定向到日志文件
+
         pids+=($!)
       done
     done
@@ -137,5 +136,5 @@ for env_id in "${atari_envs[@]}"; do
   echo
 done
 
-echo "All Slow Critic Ablation Studies Finished."
+echo "All Ablation Studies Finished."
 
