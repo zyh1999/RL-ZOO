@@ -31,7 +31,7 @@ set -e
 CONCURRENCY=${1:-2}
 
 # 设置 Critic 更新间隔
-SLOW_INTERVAL=20
+SLOW_INTERVAL=50
 
 # 定义所有 4 种配置 (Name MASK_MEAN LOSS_MEAN)
 # LOSS_STD 默认为 True
