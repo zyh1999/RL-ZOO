@@ -1,18 +1,22 @@
 #!/bin/bash
 #
-# PPO No-Clip Ablation:
-#   把 clip_range 开到一个极大值，几乎等价于“没有 ratio clipping”
-#   对比两种配置：
-#     1) 减 mean：normalize_advantage_mean = True
-#     2) 不减 mean：normalize_advantage_mean = False
-#   其它超参与默认 Atari PPO 保持一致（包括 normalize_advantage_std=True）。
+# PPO Adv-Mean Ablation with Different Batch Sizes (Atari)
+#
+# 任务：
+#   对比在不同 mini-batch size 下，normalize_advantage_mean (是否减均值) 对性能的影响。
+#   Atari 默认 n_steps=128, n_envs=8 -> rollout buffer size = 1024。
+#   默认 batch_size = 256。
+#
+# 配置组合：
+#   1. BatchSize=32,  AdvMean=True
+#   2. BatchSize=32,  AdvMean=False
+#   3. BatchSize=256, AdvMean=True (Baseline)
+#   4. BatchSize=256, AdvMean=False
+#   5. BatchSize=1024, AdvMean=True (Full Batch)
+#   6. BatchSize=1024, AdvMean=False (Full Batch)
 #
 # 运行方式：
-#   bash run_ppo_all_atari_four_seeds_no_clip_advmean_ablation.sh [CONCURRENCY]
-#   CONCURRENCY 默认 2，含义和 decouple_adv/run_ppo_all_atari_adv_decouple_ablation.sh 一致：
-#     - 1: 一次只跑 1 个配置（4 进程）
-#     - 2: 一次并行 2 个配置（8 进程）
-#     - 4: 一次并行更多配置（本脚本只有 2 个配置，其实 2 已经足够）
+#   bash run_ppo_all_atari_batch_size_ablation.sh [CONCURRENCY]
 #
 
 export OMP_NUM_THREADS=1
@@ -26,18 +30,28 @@ set -e
 # 参数：每次并行的配置数量
 CONCURRENCY=${1:-2}
 
-# 定义所有配置 (Name NORM_ADV_MEAN)
+# 定义所有配置 (Name BATCH_SIZE NORM_ADV_MEAN)
 ALL_CONFIGS=(
-  "withMean True"
-  "noMean  False"
+  "bs8_withMean    8    True"
+  "bs8_noMean      8    False"
+  "bs16_withMean   16   True"
+  "bs16_noMean     16   False"
+  "bs64_withMean   64   True"
+  "bs64_noMean     64   False"
+  "bs256_withMean  256  True"
+  "bs256_noMean    256  False"
+  "bs512_withMean  512  True"
+  "bs512_noMean    512  False"
+  "bs1024_withMean 1024 True"
+  "bs1024_noMean   1024 False"
 )
 
 seeds=(9 1 2 3)
 atari_envs=(
   "BreakoutNoFrameskip-v4"
-  "BeamRiderNoFrameskip-v4"
-  "QbertNoFrameskip-v4"
-  "SeaquestNoFrameskip-v4"
+  #"BeamRiderNoFrameskip-v4"
+  #"QbertNoFrameskip-v4"
+  #"SeaquestNoFrameskip-v4"
 )
 
 # 计算总配置数
@@ -52,7 +66,7 @@ trap 'echo "Caught Ctrl+C, killing all runs..."; \
       wait; \
       echo "All runs killed."' INT
 
-echo "Starting PPO No-Clip Adv-Mean Ablation with CONCURRENCY=$CONCURRENCY"
+echo "Starting PPO Batch Size Ablation with CONCURRENCY=$CONCURRENCY"
 
 # 外层循环：遍历环境（环境间串行，保证显存释放）
 for env_id in "${atari_envs[@]}"; do
@@ -71,15 +85,16 @@ for env_id in "${atari_envs[@]}"; do
 
     # 遍历当前批次的每一个配置
     for config_str in "${batch_configs[@]}"; do
-      read -r CONFIG_NAME NORM_ADV_MEAN <<< "$config_str"
+      read -r CONFIG_NAME BATCH_SIZE NORM_ADV_MEAN <<< "$config_str"
 
-      echo "    -> Launching Config: $CONFIG_NAME (normalize_advantage_mean=$NORM_ADV_MEAN)"
+      echo "    -> Launching Config: $CONFIG_NAME (BatchSize=$BATCH_SIZE, AdvMean=$NORM_ADV_MEAN)"
 
       # 为该配置启动 4 个 seed
       for s_idx in "${!seeds[@]}"; do
         seed="${seeds[$s_idx]}"
 
-        # 简单 GPU 轮询分配：同一批次内，(config_idx_in_batch * 4 + seed_idx) % 2
+        # 简单 GPU 轮询分配
+        # 找到 config 在 batch 里的索引
         cfg_idx=-1
         for idx in "${!batch_configs[@]}"; do
            if [[ "${batch_configs[$idx]}" == "$config_str" ]]; then cfg_idx=$idx; break; fi
@@ -88,8 +103,10 @@ for env_id in "${atari_envs[@]}"; do
         global_job_id=$(( cfg_idx * 4 + s_idx ))
         gpu=$(( global_job_id % 2 ))
 
-        run_name="ppo_noClip_${CONFIG_NAME}"
+        run_name="ppo_bs_ablation_${CONFIG_NAME}"
 
+        # 启动训练进程
+        # 注意：这里显式传入 batch_size 覆盖 yaml 默认值
         CUDA_VISIBLE_DEVICES="${gpu}" python train.py \
           --seed "${seed}" \
           --algo ppo \
@@ -97,14 +114,13 @@ for env_id in "${atari_envs[@]}"; do
           --vec-env subproc \
           --track \
           --wandb-run-extra-name "${run_name}" \
-          --wandb-project-name sb3_ppo_no_clip \
+          --wandb-project-name sb3_ppo_batch_size_ablation \
           -params normalize_advantage:True \
                   normalize_advantage_mean:${NORM_ADV_MEAN} \
                   normalize_advantage_std:True \
                   separate_optimizers:True \
-                  clip_range:1000000000.0 \
-                  max_grad_norm:1e9 \
-          > /dev/null 2>&1 &  # 可根据需要改成重定向到日志文件
+                  batch_size:${BATCH_SIZE} \
+          > /dev/null 2>&1 &
 
         pids+=($!)
       done
@@ -120,6 +136,5 @@ for env_id in "${atari_envs[@]}"; do
   echo
 done
 
-echo "All PPO No-Clip Adv-Mean Ablation runs finished."
-
+echo "All PPO Batch Size Ablation runs finished."
 
