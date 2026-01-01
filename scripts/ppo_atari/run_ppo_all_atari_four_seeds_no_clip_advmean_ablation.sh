@@ -1,23 +1,19 @@
 #!/bin/bash
 #
-# PPO Adv Decouple Ablation Study (Slow Critic Update)
-# 
-# 任务：
-#   遍历 4 个 Atari 环境
-#   测试 4 种 Decouple 配置
-#   在 slow_critic_update_interval=5 的情况下进行对比
-#   每个配置跑 4 个 seed
+# PPO No-Clip Ablation:
+#   把 clip_range 开到一个极大值，几乎等价于“没有 ratio clipping”
+#   对比两种配置：
+#     1) 减 mean：normalize_advantage_mean = True
+#     2) 不减 mean：normalize_advantage_mean = False
+#   其它超参与默认 Atari PPO 保持一致（包括 normalize_advantage_std=True）。
 #
-# 运行模式:
-#   bash run_ppo_all_atari_adv_decouple_slow_critic.sh [CONCURRENCY]
-#   
-#   CONCURRENCY (默认 2): 每次并行跑几种配置。
-#     - 1: 每次跑 1 个配置 (4 进程), 最稳妥
-#     - 2: 每次跑 2 个配置 (8 进程), 默认
+# 运行方式：
+#   bash run_ppo_all_atari_four_seeds_no_clip_advmean_ablation.sh [CONCURRENCY]
+#   CONCURRENCY 默认 2，含义和 decouple_adv/run_ppo_all_atari_adv_decouple_ablation.sh 一致：
+#     - 1: 一次只跑 1 个配置（4 进程）
+#     - 2: 一次并行 2 个配置（8 进程）
+#     - 4: 一次并行更多配置（本脚本只有 2 个配置，其实 2 已经足够）
 #
-# GPU 分配策略：
-#   脚本假定有 2 张卡 (GPU 0, 1)。
-#   所有并行任务会自动在 0/1 之间轮询分配。
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
@@ -30,16 +26,10 @@ set -e
 # 参数：每次并行的配置数量
 CONCURRENCY=${1:-2}
 
-# 设置 Critic 更新间隔
-SLOW_INTERVAL=100
-
-# 定义所有 4 种配置 (Name MASK_MEAN LOSS_MEAN)
-# LOSS_STD 默认为 True
+# 定义所有配置 (Name NORM_ADV_MEAN)
 ALL_CONFIGS=(
-  "baseline_slow${SLOW_INTERVAL}      True  True"
-  "noMaskMean_slow${SLOW_INTERVAL}    False True"
-  "noLossMean_slow${SLOW_INTERVAL}    True  False"
-  "allNoMean_slow${SLOW_INTERVAL}     False False"
+  "withMean True"
+  "noMean  False"
 )
 
 seeds=(9 1 2 3)
@@ -62,7 +52,7 @@ trap 'echo "Caught Ctrl+C, killing all runs..."; \
       wait; \
       echo "All runs killed."' INT
 
-echo "Starting Slow Critic Ablation Study (Interval=${SLOW_INTERVAL}) with CONCURRENCY=$CONCURRENCY"
+echo "Starting PPO No-Clip Adv-Mean Ablation with CONCURRENCY=$CONCURRENCY"
 
 # 外层循环：遍历环境（环境间串行，保证显存释放）
 for env_id in "${atari_envs[@]}"; do
@@ -72,56 +62,49 @@ for env_id in "${atari_envs[@]}"; do
 
   # 内层循环：分批次执行配置
   for ((i=0; i<TOTAL_CONFIGS; i+=CONCURRENCY)); do
-    
+
     # 获取当前批次的配置
     batch_configs=("${ALL_CONFIGS[@]:i:CONCURRENCY}")
-    
+
     echo "  Running Batch starting at config index $i..."
     pids=() # 清空当前批次的 PID 列表
 
     # 遍历当前批次的每一个配置
     for config_str in "${batch_configs[@]}"; do
-      read -r CONFIG_NAME MASK_MEAN LOSS_MEAN <<< "$config_str"
-      LOSS_STD="True"
+      read -r CONFIG_NAME NORM_ADV_MEAN <<< "$config_str"
 
-      echo "    -> Launching Config: $CONFIG_NAME (MASK_MEAN=$MASK_MEAN, LOSS_MEAN=$LOSS_MEAN, INTERVAL=$SLOW_INTERVAL)"
+      echo "    -> Launching Config: $CONFIG_NAME (normalize_advantage_mean=$NORM_ADV_MEAN)"
 
       # 为该配置启动 4 个 seed
       for s_idx in "${!seeds[@]}"; do
         seed="${seeds[$s_idx]}"
-        
-        # 简单的 GPU 轮询分配 (全局轮询)
-        # 找到 config 在 batch 里的索引
+
+        # 简单 GPU 轮询分配：同一批次内，(config_idx_in_batch * 4 + seed_idx) % 2
         cfg_idx=-1
         for idx in "${!batch_configs[@]}"; do
            if [[ "${batch_configs[$idx]}" == "$config_str" ]]; then cfg_idx=$idx; break; fi
         done
-        
+
         global_job_id=$(( cfg_idx * 4 + s_idx ))
         gpu=$(( global_job_id % 2 ))
 
-        run_name="ppo_decouple_${CONFIG_NAME}"
-        
-        # 启动训练进程
+        run_name="ppo_noClip_${CONFIG_NAME}"
+
         CUDA_VISIBLE_DEVICES="${gpu}" python train.py \
           --seed "${seed}" \
-          --algo ppo_adv_decouple \
+          --algo ppo \
           --env "${env_id}" \
           --vec-env subproc \
           --track \
           --wandb-run-extra-name "${run_name}" \
-          --wandb-project-name sb3_critic_slow \
+          --wandb-project-name sb3_ppo_no_clip \
           -params normalize_advantage:True \
-                  normalize_advantage_mean:True \
+                  normalize_advantage_mean:${NORM_ADV_MEAN} \
                   normalize_advantage_std:True \
                   separate_optimizers:True \
-                  loss_use_adv_mean:${LOSS_MEAN} \
-                  loss_use_adv_std:${LOSS_STD} \
-                  clip_mask_use_adv_mean:${MASK_MEAN} \
-                  slow_critic_update_interval:${SLOW_INTERVAL} \
-          > /dev/null 2>&1 &  # 减少输出干扰
-        
-        # 保存 PID
+                  clip_range:1000000000.0 \
+          > /dev/null 2>&1 &  # 可根据需要改成重定向到日志文件
+
         pids+=($!)
       done
     done
@@ -136,5 +119,6 @@ for env_id in "${atari_envs[@]}"; do
   echo
 done
 
-echo "All Slow Critic Ablation Studies Finished."
+echo "All PPO No-Clip Adv-Mean Ablation runs finished."
+
 
