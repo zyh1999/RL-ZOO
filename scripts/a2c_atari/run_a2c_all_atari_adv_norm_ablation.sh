@@ -107,7 +107,7 @@ for env_id in "${atari_envs[@]}"; do
         global_job_id=$(( cfg_idx * 4 + s_idx ))
         gpu=$(( global_job_id % 2 ))
 
-        run_name="a2c_advNorm_${CONFIG_NAME}"
+        run_name="a2c_advNorm_0.08_ent_coef_${CONFIG_NAME}"
         
         # 启动训练进程
         # 使用选定的通用超参数: lr=3e-4, ent_coef=0.01
@@ -123,7 +123,7 @@ for env_id in "${atari_envs[@]}"; do
                   normalize_advantage_mean:${ADV_MEAN} \
                   normalize_advantage_std:${ADV_STD} \
                   learning_rate:3e-4 \
-                  ent_coef:0.01 \
+                  ent_coef:0.08 \
                   n_envs:16 \
           > /dev/null 2>&1 &  # 减少输出干扰
 
