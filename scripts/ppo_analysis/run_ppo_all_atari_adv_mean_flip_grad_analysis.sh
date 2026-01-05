@@ -82,7 +82,7 @@ for ((i=0; i<TOTAL_ENVS; i+=CONCURRENCY)); do
         --vec-env subproc \
         --track \
         --wandb-run-extra-name "${run_name}" \
-        --wandb-project-name sb3_ppo_adv_mean_flip_grad_analysis \
+        --wandb-project-name sb3_ppo_adv_mean_flip_grad_analysis_new \
         --wandb-entity agent-lab-ppo \
         -params enable_adv_mean_flip_grad_analysis:True \
                 normalize_advantage:True \

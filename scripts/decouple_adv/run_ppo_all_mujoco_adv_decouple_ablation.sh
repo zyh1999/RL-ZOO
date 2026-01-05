@@ -119,11 +119,12 @@ for env_id in "${mujoco_envs[@]}"; do
           --vec-env subproc \
           --track \
           --wandb-run-extra-name "${run_name}" \
-          --wandb-project-name sb3_new_mujoco_gradnorm0.5_normreward \
+          --wandb-project-name sb3_new_mujoco_gradnorm0.5_sep_features_normreward \
           --wandb-entity agent-lab-ppo \
           -params normalize:"{'norm_obs':True,'norm_reward':True}" \
                   max_grad_norm:0.5 \
                   policy:'MlpPolicy' \
+                  policy_kwargs:"dict(share_features_extractor=False)" \
                   n_steps:2048 \
                   batch_size:64 \
                   learning_rate:3e-4 \
