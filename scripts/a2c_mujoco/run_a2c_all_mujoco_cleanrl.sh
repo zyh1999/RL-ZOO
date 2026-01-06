@@ -39,7 +39,6 @@ mujoco_envs=(
   "Hopper-v4"
   "Walker2d-v4"
   "Swimmer-v4"
-  "Humanoid-v4"
 )
 
 # 四种消融：advantage mean/std 组合
@@ -52,7 +51,6 @@ ALL_CONFIGS=(
 
 # CleanRL-style / SB3-default-ish A2C continuous params
 # NOTE: n_timesteps 这里显式设成 1e6（Humanoid 通常需要更久，可自行改 2e6+）
-N_TIMESTEPS="1000000"
 N_ENVS="8"
 N_STEPS="5"
 LR="7e-4"
@@ -71,7 +69,7 @@ trap 'echo "Caught Ctrl+C, killing all runs..."; \
       echo "All runs killed."' INT
 
 echo "Starting A2C MuJoCo (CleanRL-style) with SEED_CONCURRENCY=${SEED_CONCURRENCY}"
-echo "Params: n_timesteps=${N_TIMESTEPS}, n_envs=${N_ENVS}, n_steps=${N_STEPS}, lr=${LR}, gamma=${GAMMA}, gae_lambda=${GAE_LAMBDA}, ent_coef=${ENT_COEF}, vf_coef=${VF_COEF}, max_grad_norm=${MAX_GRAD_NORM}"
+echo "Params: n_envs=${N_ENVS}, n_steps=${N_STEPS}, lr=${LR}, gamma=${GAMMA}, gae_lambda=${GAE_LAMBDA}, ent_coef=${ENT_COEF}, vf_coef=${VF_COEF}, max_grad_norm=${MAX_GRAD_NORM}, optimizer=RMSProp(eps=1e-5, alpha=0.99)"
 
 for env_id in "${mujoco_envs[@]}"; do
   echo "========================================================"
@@ -108,11 +106,10 @@ for env_id in "${mujoco_envs[@]}"; do
           --vec-env subproc \
           --track \
           --wandb-run-extra-name "${run_name}" \
-          --wandb-project-name sb3_a2c_mujoco_no_reward_norm_sep_feature \
+          --wandb-project-name sb3_a2c_mujoco_no_reward_norm_sep_feature_rmsprop \
           --wandb-entity agent-lab-ppo \
           -params policy:'MlpPolicy' \
                   policy_kwargs:"dict(share_features_extractor=False)" \
-                  n_timesteps:${N_TIMESTEPS} \
                   n_envs:${N_ENVS} \
                   n_steps:${N_STEPS} \
                   learning_rate:${LR} \
@@ -121,6 +118,8 @@ for env_id in "${mujoco_envs[@]}"; do
                   ent_coef:${ENT_COEF} \
                   vf_coef:${VF_COEF} \
                   max_grad_norm:${MAX_GRAD_NORM} \
+                  use_rms_prop:True \
+                  rms_prop_eps:1e-5 \
                   normalize:"{'norm_obs':True,'norm_reward':False}" \
                   normalize_advantage:True \
                   normalize_advantage_mean:${ADV_MEAN} \
