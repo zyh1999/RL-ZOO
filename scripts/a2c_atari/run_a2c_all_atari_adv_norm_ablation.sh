@@ -70,7 +70,7 @@ trap 'echo "Caught Ctrl+C, killing all runs..."; \
       wait; \
       echo "All runs killed."' INT
 
-echo "Starting A2C Adv Norm Ablation (LR=4e-4, Ent=0.01) with CONCURRENCY=$CONCURRENCY"
+echo "Starting A2C Adv Norm Ablation (LR=3e-4, Ent=0.01) with CONCURRENCY=$CONCURRENCY"
 
 # 外层循环：遍历环境（环境间串行，保证显存释放）
 for env_id in "${atari_envs[@]}"; do
