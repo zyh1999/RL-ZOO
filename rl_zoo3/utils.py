@@ -13,7 +13,7 @@ from gymnasium import spaces
 from huggingface_hub import HfApi
 from huggingface_sb3 import EnvironmentName, ModelName
 from sb3_contrib import ARS, QRDQN, TQC, TRPO, CrossQ, RecurrentPPO
-from stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3, MPO
+from stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3, MPO, NPG
 from stable_baselines3.ppo.ppo_v_map import PPOVmap
 from stable_baselines3.ppo.ppo_backpack import PPOBackpack
 from stable_baselines3.ppo.ppo_critic_warmup import PPOCriticWarmup
@@ -45,6 +45,7 @@ ALGOS: dict[str, type[BaseAlgorithm]] = {
     "qrdqn": QRDQN,
     "tqc": TQC,
     "trpo": TRPO,
+    "npg": NPG,
     "ppo_lstm": RecurrentPPO,
 }
 

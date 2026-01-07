@@ -1,0 +1,29 @@
+# Natural Policy Gradient (NPG) hyperparameters.
+#
+# 尽量贴近 detach 配置：
+# - Hopper，32 并行，nsteps=256，总步数约 5e6
+# - ratio clamp [0.1, 10]，adv 归一/零均值，Fisher 裁剪 + 固定 KL 预算
+# - value lr=1e-3，actor 步幅由 target_kl 计算（无线搜索），cg_steps=10
+
+Hopper-v4:
+  n_envs: 32
+  n_timesteps: !!float 5e6
+  policy: "MlpPolicy"
+  n_steps: 256
+  batch_size: 1024          # 8192 buffer / 8 minibatches（对应 detach 的 v_minibatches）
+  gamma: 0.99
+  gae_lambda: 0.95
+  cg_max_steps: 10
+  cg_damping: 0.1
+  target_kl: 0.008          # detach 里用于 KL 自适应的阈值，这里作为固定预算
+  n_critic_updates: 4       # 对齐 detach 的 v_epochs
+  normalize_advantage: False
+  clamp_ratio: True
+  min_ratio: 0.1
+  max_ratio: 10.0
+  norm_obj: "adv"
+  grad_mode: "npg"
+  post_grad: "fisher_clip"
+  max_grad_norm: 0.5
+  ent_coef: 0.0
+  learning_rate: !!float 1e-3
