@@ -95,6 +95,7 @@ for env_id in "${mujoco_envs[@]}"; do
           --wandb-project-name sb3_ppo_mujoco_ablation_3factor \
           --wandb-run-extra-name "${run_name}" \
           --wandb-entity agent-lab-ppo \
+          --wandb-group-name "ppo_${env_id}_${NAME}" \
           -params policy_kwargs:"dict(share_features_extractor=${SHARE_FLAG})" \
                   normalize:"{'norm_obs':True,'norm_reward':${NORM_REWARD_FLAG}}" \
                   max_grad_norm:0.5 \
