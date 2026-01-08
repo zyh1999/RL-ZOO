@@ -73,12 +73,18 @@ for env_id in "${mujoco_envs[@]}"; do
       read -r NAME SHARE_FLAG NORM_REWARD_FLAG ADV_MEAN_FLAG <<< "$config_str"
       echo "    -> Launching Config: $NAME (share=$SHARE_FLAG, norm_rew=$NORM_REWARD_FLAG, adv_mean=$ADV_MEAN_FLAG)"
 
-      for seed in "${seeds[@]}"; do
+      for s_idx in "${!seeds[@]}"; do
+        seed="${seeds[$s_idx]}"
         run_name="ppo_${env_id}_${NAME}_seed${seed}"
         
-        # 简单的 GPU 轮询 (seed % 2) - 如果并发量大，可能需要更精细的分配
-        # 这里仍保持 seed 决定 gpu，可能会有一定不均衡，但 8 个进程分摊到 2 卡通常可以接受
-        gpu=$(( seed % 2 ))
+        # GPU 分配策略：对齐 decouple 脚本
+        # 在当前 batch 内，对 (config_index_in_batch, seed_index) 做全局编号并在 0/1 之间轮询
+        cfg_idx=-1
+        for idx in "${!batch_configs[@]}"; do
+          if [[ "${batch_configs[$idx]}" == "$config_str" ]]; then cfg_idx=$idx; break; fi
+        done
+        global_job_id=$(( cfg_idx * ${#seeds[@]} + s_idx ))
+        gpu=$(( global_job_id % 2 ))
 
         CUDA_VISIBLE_DEVICES="${gpu}" python train.py \
           --algo ppo \
@@ -91,7 +97,8 @@ for env_id in "${mujoco_envs[@]}"; do
           --wandb-entity agent-lab-ppo \
           -params policy_kwargs:"dict(share_features_extractor=${SHARE_FLAG})" \
                   normalize:"{'norm_obs':True,'norm_reward':${NORM_REWARD_FLAG}}" \
-                  max_grad_norm:1e9 \
+                  max_grad_norm:0.5 \
+                  policy:'MlpPolicy' \
                   normalize_advantage:True \
                   normalize_advantage_mean:${ADV_MEAN_FLAG} \
                   normalize_advantage_std:True \

@@ -3,21 +3,40 @@
 # 尽量贴近 detach 配置：
 # - Hopper，32 并行，nsteps=256，总步数约 5e6
 # - ratio clamp [0.1, 10]，adv 归一/零均值，Fisher 裁剪 + 固定 KL 预算
-# - value lr=1e-3，actor 步幅由 target_kl 计算（无线搜索），cg_steps=10
+# - value lr=1e-3，actor 用 SGD(lr_pi) 更新，并用 KL 自适应调 lr（detach 对齐），cg_steps=10
 
-Hopper-v4:
+mujoco_defaults: &mujoco_defaults
+  # 默认开启 obs/reward 归一化（方便单独改）
+  normalize:
+    norm_obs: true
+    norm_reward: true
+
+# 以 Hopper-v4 这套作为 NPG Mujoco 默认超参
+npg_mujoco_defaults: &npg_mujoco_defaults
+  <<: *mujoco_defaults
   n_envs: 32
   n_timesteps: !!float 5e6
   policy: "MlpPolicy"
+  # 对齐 detach true_mlp：actor/critic 都是 2x256
+  # SB3: 用 net_arch 指定 pi/vf 各自的 MLP 结构
+  policy_kwargs: "dict(net_arch=dict(pi=[256, 256], vf=[256, 256]), share_features_extractor=False, state_dependent_std=True)"
   n_steps: 256
-  batch_size: 1024          # 8192 buffer / 8 minibatches（对应 detach 的 v_minibatches）
+  pi_batch_size: 1024       # 8192 buffer / 8 minibatches
+  v_batch_size: 1024        # 8192 buffer / 8 minibatches
   gamma: 0.99
   gae_lambda: 0.95
   cg_max_steps: 10
   cg_damping: 0.1
-  target_kl: 0.008          # detach 里用于 KL 自适应的阈值，这里作为固定预算
-  n_critic_updates: 4       # 对齐 detach 的 v_epochs
+  target_kl: 0.008          # detach 里的 KL 阈值（这里用于 KL 自适应调 lr 的阈值）
+  lr_pi: 0.05
+  use_kl_adaptive_lr: true
+  lr_pi_min: !!float 1e-4
+  lr_pi_max: !!float 5e-2
+  lr_pi_adapt_factor: 1.5
+  pi_epochs: 4
+  v_epochs: 4
   normalize_advantage: False
+  action_squash: True
   clamp_ratio: True
   min_ratio: 0.1
   max_ratio: 10.0
@@ -25,5 +44,11 @@ Hopper-v4:
   grad_mode: "npg"
   post_grad: "fisher_clip"
   max_grad_norm: 0.5
-  ent_coef: 0.0
-  learning_rate: !!float 1e-3
+  max_grad_norm_v: 5.0
+  lr_v: !!float 1e-3
+
+Hopper-v4:
+  <<: *npg_mujoco_defaults
+
+HalfCheetah-v4:
+  <<: *npg_mujoco_defaults

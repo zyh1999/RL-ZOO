@@ -49,10 +49,10 @@ seeds=(9 1 2 3)
 mujoco_envs=(
   # "Ant-v4"
   "HalfCheetah-v4"
-  "Hopper-v4"
-  "Walker2d-v4"
-  "Swimmer-v4"
-  "Humanoid-v4"
+  #"Hopper-v4"
+  #"Walker2d-v4"
+  #"Swimmer-v4"
+  #"Humanoid-v4"
 )
 
 # 计算总配置数
@@ -119,9 +119,9 @@ for env_id in "${mujoco_envs[@]}"; do
           --vec-env subproc \
           --track \
           --wandb-run-extra-name "${run_name}" \
-          --wandb-project-name sb3_new_mujoco_gradnorm0.5_sep_features_normreward \
+          --wandb-project-name sb3_new_mujoco_gradnorm0.5_sep_features_noreward_norm \
           --wandb-entity agent-lab-ppo \
-          -params normalize:"{'norm_obs':True,'norm_reward':True}" \
+          -params normalize:"{'norm_obs':True,'norm_reward':False}" \
                   max_grad_norm:0.5 \
                   policy:'MlpPolicy' \
                   policy_kwargs:"dict(share_features_extractor=False)" \
