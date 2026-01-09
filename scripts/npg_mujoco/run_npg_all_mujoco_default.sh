@@ -29,7 +29,7 @@ export torch_num_threads=1
 # 在这里改超参（默认值建议与 hyperparams/npg.yml 保持一致）
 # 说明：bool 请用 True/False（Python 可 eval 的字面量）
 # ============================================================
-GAMMA="${GAMMA:-0.999}"
+GAMMA="${GAMMA:-0.99}"
 USE_POPART="${USE_POPART:-True}"
 ACTION_SQUASH="${ACTION_SQUASH:-True}"
 NORM_OBS="${NORM_OBS:-True}"
@@ -50,7 +50,7 @@ mujoco_envs=(
   #"HalfCheetah-v4"
   #"Hopper-v4"
   #"Walker2d-v4"
-  "Swimmer-v4"
+  "Swimmer-v3"
   #"Humanoid-v4"
 )
 

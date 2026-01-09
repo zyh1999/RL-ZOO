@@ -63,5 +63,8 @@ Walker2d-v4:
 Swimmer-v4:
   <<: *npg_mujoco_defaults
 
+Swimmer-v3:
+  <<: *npg_mujoco_defaults
+  
 Humanoid-v4:
   <<: *npg_mujoco_defaults
