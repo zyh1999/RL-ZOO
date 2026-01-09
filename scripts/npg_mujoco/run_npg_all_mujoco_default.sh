@@ -6,7 +6,7 @@
 #   bash scripts/npg_mujoco/run_npg_all_mujoco_default.sh
 #
 # 也可用环境变量临时覆盖（不用改文件），例如：
-#   GAMMA=0.995 USE_POPART=True ACTION_SQUASH=False bash scripts/npg_mujoco/run_npg_all_mujoco_default.sh
+#   GAMMA=0.995 USE_POPART=True ACTION_SQUASH=False NORM_OBS=True NORM_REWARD=False bash scripts/npg_mujoco/run_npg_all_mujoco_default.sh
 #
 # 说明:
 # - RL-ZOO 会默认读取 hyperparams/npg.yml（因为 --algo npg）
@@ -32,6 +32,8 @@ export torch_num_threads=1
 GAMMA="${GAMMA:-0.99}"
 USE_POPART="${USE_POPART:-False}"
 ACTION_SQUASH="${ACTION_SQUASH:-True}"
+NORM_OBS="${NORM_OBS:-True}"
+NORM_REWARD="${NORM_REWARD:-True }"
 
 # GPU 轮询分配（默认 2 张卡；单卡可设 GPU_COUNT=1）
 GPU_COUNT="${GPU_COUNT:-2}"
@@ -69,6 +71,7 @@ echo "Starting NPG MuJoCo (default hyperparams) with env concurrency=2"
 echo "Envs: ${mujoco_envs[*]}"
 echo "Seeds: ${seeds[*]}"
 echo "Params override: gamma=${GAMMA}, use_popart=${USE_POPART}, action_squash=${ACTION_SQUASH}"
+echo "Normalize override: norm_obs=${NORM_OBS}, norm_reward=${NORM_REWARD}"
 
 for ((i=0; i<${#mujoco_envs[@]}; i+=2)); do
   batch_envs=("${mujoco_envs[@]:i:2}")
@@ -101,11 +104,12 @@ for ((i=0; i<${#mujoco_envs[@]}; i+=2)); do
         --algo npg \
         --env "${env_id}" \
         -params gamma:${GAMMA} use_popart:${USE_POPART} action_squash:${ACTION_SQUASH} \
+                normalize:"{'norm_obs':${NORM_OBS},'norm_reward':${NORM_REWARD}}" \
         --track \
         --wandb-run-extra-name "${run_name}" \
         --wandb-project-name "${WANDB_PROJECT}" \
         --wandb-entity "${WANDB_ENTITY}" \
-        --wandb-group-name "${WANDB_GROUP}_pa${USE_POPART}_sq${ACTION_SQUASH}_${env_id}" \
+        --wandb-group-name "${WANDB_GROUP}_pa${USE_POPART}_sq${ACTION_SQUASH}_no${NORM_OBS}_nr${NORM_REWARD}_${env_id}" \
         > "${log_file}" 2>&1 &
       pids+=($!)
     done

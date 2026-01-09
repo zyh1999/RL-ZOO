@@ -56,3 +56,12 @@ Hopper-v4:
 
 HalfCheetah-v4:
   <<: *npg_mujoco_defaults
+
+Walker2d-v4:
+  <<: *npg_mujoco_defaults
+
+Swimmer-v4:
+  <<: *npg_mujoco_defaults
+
+Humanoid-v4:
+  <<: *npg_mujoco_defaults
