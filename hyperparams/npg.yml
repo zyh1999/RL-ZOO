@@ -8,8 +8,8 @@
 mujoco_defaults: &mujoco_defaults
   # 默认开启 obs/reward 归一化（沿用 SB3 VecNormalize 的 reward norm）
   normalize:
-    norm_obs: True
-    norm_reward: True
+    norm_obs: true
+    norm_reward: true
 
 # 以 Hopper-v4 这套作为 NPG Mujoco 默认超参
 npg_mujoco_defaults: &npg_mujoco_defaults
@@ -21,11 +21,12 @@ npg_mujoco_defaults: &npg_mujoco_defaults
   # SB3: 用 net_arch 指定 pi/vf 各自的 MLP 结构
   # detach: sigma_type='vector' => global learnable log_std (not state-dependent)
   # detach uses default (non-orthogonal) initialization; SB3 default ortho_init=True can change early learning a lot.
-  policy_kwargs: "dict(net_arch=dict(pi=[256, 256], vf=[256, 256]), share_features_extractor=False, state_dependent_std=False, ortho_init=False)"
+  # 使用 SB3 默认 ActorCriticPolicy（不要传自定义参数，比如 state_dependent_std/use_popart）
+  policy_kwargs: "dict(net_arch=dict(pi=[256, 256], vf=[256, 256]), share_features_extractor=False, ortho_init=False)"
   n_steps: 256
   pi_batch_size: 1024       # 8192 buffer / 8 minibatches
   v_batch_size: 1024        # 8192 buffer / 8 minibatches
-  gamma: 0.999
+  gamma: 0.99
   gae_lambda: 0.95
   cg_max_steps: 10
   cg_damping: 0.1
@@ -38,7 +39,7 @@ npg_mujoco_defaults: &npg_mujoco_defaults
   pi_epochs: 4
   v_epochs: 4
   normalize_advantage: False
-  action_squash: False      # 暂时不使用 tanh squash，沿用 SB3 的 clip 到 action space
+  action_squash: True       # 使用 tanh squash（训练 rollout 和推理 predict 都会生效）
   clamp_ratio: True
   min_ratio: 0.1
   max_ratio: 10.0

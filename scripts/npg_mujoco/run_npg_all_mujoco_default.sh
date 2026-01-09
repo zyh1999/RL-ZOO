@@ -42,7 +42,7 @@ CONF_FILE="hyperparams/npg.yml"
 # W&B（默认对齐 a2c_mujoco 的风格；可用环境变量覆盖）
 : "${WANDB_ENTITY:=agent-lab-ppo}"
 : "${WANDB_PROJECT:=sb3_npg_mujoco_default}"
-: "${WANDB_GROUP:=npg_mujoco_iter_4_dependent_std_squash_action}"
+: "${WANDB_GROUP:=npg_mujoco_iter_4_add_action_squash}"
 
 pids=()
 trap 'echo "Caught Ctrl+C, killing all runs..."; \
