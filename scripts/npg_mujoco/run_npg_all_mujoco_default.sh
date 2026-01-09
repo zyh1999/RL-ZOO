@@ -1,12 +1,16 @@
 #!/bin/bash
 #
-# NPG MuJoCo (default hyperparams from hyperparams/npg.yml)
+# NPG MuJoCo (default hyperparams from rl_zoo3 default config: hyperparams/npg.yml)
 #
 # 运行模式:
 #   bash scripts/npg_mujoco/run_npg_all_mujoco_default.sh
 #
+# 也可用环境变量临时覆盖（不用改文件），例如：
+#   GAMMA=0.995 USE_POPART=True ACTION_SQUASH=False bash scripts/npg_mujoco/run_npg_all_mujoco_default.sh
+#
 # 说明:
-# - 仅使用当前默认超参（hyperparams/npg.yml），不额外传 -params 覆盖
+# - RL-ZOO 会默认读取 hyperparams/npg.yml（因为 --algo npg）
+# - 你可以在脚本顶部改 GAMMA/USE_POPART/ACTION_SQUASH 来覆盖对应超参
 # - 5 个环境：HalfCheetah / Hopper / Walker2d / Swimmer / Humanoid
 # - 每个环境跑 4 个种子
 # - 并发策略：始终保持“每次最多两个环境一起跑”
@@ -20,6 +24,17 @@ export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export torch_num_threads=1
+
+# ============================================================
+# 在这里改超参（默认值建议与 hyperparams/npg.yml 保持一致）
+# 说明：bool 请用 True/False（Python 可 eval 的字面量）
+# ============================================================
+GAMMA="${GAMMA:-0.99}"
+USE_POPART="${USE_POPART:-False}"
+ACTION_SQUASH="${ACTION_SQUASH:-True}"
+
+# GPU 轮询分配（默认 2 张卡；单卡可设 GPU_COUNT=1）
+GPU_COUNT="${GPU_COUNT:-2}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -37,8 +52,6 @@ mujoco_envs=(
   "Humanoid-v4"
 )
 
-CONF_FILE="hyperparams/npg.yml"
-
 # W&B（默认对齐 a2c_mujoco 的风格；可用环境变量覆盖）
 : "${WANDB_ENTITY:=agent-lab-ppo}"
 : "${WANDB_PROJECT:=sb3_npg_mujoco_default}"
@@ -55,6 +68,7 @@ trap 'echo "Caught Ctrl+C, killing all runs..."; \
 echo "Starting NPG MuJoCo (default hyperparams) with env concurrency=2"
 echo "Envs: ${mujoco_envs[*]}"
 echo "Seeds: ${seeds[*]}"
+echo "Params override: gamma=${GAMMA}, use_popart=${USE_POPART}, action_squash=${ACTION_SQUASH}"
 
 for ((i=0; i<${#mujoco_envs[@]}; i+=2)); do
   batch_envs=("${mujoco_envs[@]:i:2}")
@@ -62,7 +76,7 @@ for ((i=0; i<${#mujoco_envs[@]}; i+=2)); do
 
   echo "========================================================"
   echo "Starting Env batch (concurrency=8 runs): ${batch_envs[*]}"
-  echo "Config: ${CONF_FILE} (defaults), seeds: ${seeds[*]}"
+  echo "Config: rl_zoo3 default (hyperparams/npg.yml), seeds: ${seeds[*]}"
   echo "========================================================"
 
   # 每批 2 个环境 * 4 个 seed = 8 个训练进程同时跑
@@ -71,21 +85,27 @@ for ((i=0; i<${#mujoco_envs[@]}; i+=2)); do
     log_dir="logs/npg_mujoco/${env_id}"
     mkdir -p "${log_dir}"
 
-    for seed in "${seeds[@]}"; do
+    for s_idx in "${!seeds[@]}"; do
+      seed="${seeds[$s_idx]}"
+
+      # 在当前 batch(2 envs x 4 seeds) 内做全局轮询：0..7 -> GPU 0/1/0/1...
+      global_job_id=$(( e_idx * ${#seeds[@]} + s_idx ))
+      gpu=$(( global_job_id % GPU_COUNT ))
+
       run_name="npg_mujoco_default_${env_id}_seed${seed}"
       log_file="${log_dir}/seed${seed}.log"
 
-      echo "  -> Launching env=${env_id}, seed=${seed} (log: ${log_file})"
-      python -u train.py \
+      echo "  -> Launching env=${env_id}, seed=${seed}, gpu=${gpu} (log: ${log_file})"
+      CUDA_VISIBLE_DEVICES="${gpu}" python -u train.py \
         --seed "${seed}" \
         --algo npg \
         --env "${env_id}" \
-        --conf-file "${CONF_FILE}" \
+        -params gamma:${GAMMA} use_popart:${USE_POPART} action_squash:${ACTION_SQUASH} \
         --track \
         --wandb-run-extra-name "${run_name}" \
         --wandb-project-name "${WANDB_PROJECT}" \
         --wandb-entity "${WANDB_ENTITY}" \
-        --wandb-group-name "${WANDB_GROUP}_${env_id}" \
+        --wandb-group-name "${WANDB_GROUP}_pa${USE_POPART}_sq${ACTION_SQUASH}_${env_id}" \
         > "${log_file}" 2>&1 &
       pids+=($!)
     done
