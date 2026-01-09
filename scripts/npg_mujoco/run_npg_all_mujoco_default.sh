@@ -29,11 +29,11 @@ export torch_num_threads=1
 # 在这里改超参（默认值建议与 hyperparams/npg.yml 保持一致）
 # 说明：bool 请用 True/False（Python 可 eval 的字面量）
 # ============================================================
-GAMMA="${GAMMA:-0.99}"
-USE_POPART="${USE_POPART:-False}"
+GAMMA="${GAMMA:-0.999}"
+USE_POPART="${USE_POPART:-True}"
 ACTION_SQUASH="${ACTION_SQUASH:-True}"
 NORM_OBS="${NORM_OBS:-True}"
-NORM_REWARD="${NORM_REWARD:-True }"
+NORM_REWARD="${NORM_REWARD:-False}"
 
 # GPU 轮询分配（默认 2 张卡；单卡可设 GPU_COUNT=1）
 GPU_COUNT="${GPU_COUNT:-2}"
@@ -47,11 +47,11 @@ mkdir -p logs/npg_mujoco
 seeds=(9 1 2 3)
 
 mujoco_envs=(
-  "HalfCheetah-v4"
-  "Hopper-v4"
-  "Walker2d-v4"
+  #"HalfCheetah-v4"
+  #"Hopper-v4"
+  #"Walker2d-v4"
   "Swimmer-v4"
-  "Humanoid-v4"
+  #"Humanoid-v4"
 )
 
 # W&B（默认对齐 a2c_mujoco 的风格；可用环境变量覆盖）
@@ -109,7 +109,7 @@ for ((i=0; i<${#mujoco_envs[@]}; i+=2)); do
         --wandb-run-extra-name "${run_name}" \
         --wandb-project-name "${WANDB_PROJECT}" \
         --wandb-entity "${WANDB_ENTITY}" \
-        --wandb-group-name "${WANDB_GROUP}_pa${USE_POPART}_sq${ACTION_SQUASH}_no${NORM_OBS}_nr${NORM_REWARD}_${env_id}" \
+        --wandb-group-name "${WANDB_GROUP}_pa${USE_POPART}_sq${ACTION_SQUASH}_no${NORM_OBS}_nr${NORM_REWARD}_gamma${GAMMA}_${env_id}" \
         > "${log_file}" 2>&1 &
       pids+=($!)
     done
