@@ -44,7 +44,8 @@ NORM_REWARD="${NORM_REWARD:-False}"
 # Detach-style obs normalization（算法内部 RunningMeanStd，rollout 用旧 stats，train 前更新 stats）
 USE_DETACH_OBS_RMS="${USE_DETACH_OBS_RMS:-True}"
 DETACH_RECOMPUTE_PI_OLD="${DETACH_RECOMPUTE_PI_OLD:-True}"
-DETACH_OBS_RMS_EPS="${DETACH_OBS_RMS_EPS:-1e-8}"
+# 对齐 mingfei/detach 的 obs_rms.epsilon（running_mean_std.py 里是 1e-05）
+DETACH_OBS_RMS_EPS="${DETACH_OBS_RMS_EPS:-1e-05}"
 # 对齐 mingfei/detach：obs 归一化后会做 clamp（mingfei 代码里是 [-5, 5]）
 # 这里默认用 5.0；如需更激进/保守可覆盖环境变量。
 DETACH_OBS_RMS_CLIP="${DETACH_OBS_RMS_CLIP:-5.0}"
