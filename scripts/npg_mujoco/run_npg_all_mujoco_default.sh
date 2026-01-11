@@ -65,7 +65,7 @@ mujoco_envs=(
   "HalfCheetah-v4"
   "Hopper-v4"
   "Walker2d-v4"
-  "Swimmer-v3"
+  "Swimmer-v4"
   "Humanoid-v4"
 )
 
