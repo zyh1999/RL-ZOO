@@ -72,7 +72,7 @@ mujoco_envs=(
 # W&B（默认对齐 a2c_mujoco 的风格；可用环境变量覆盖）
 : "${WANDB_ENTITY:=agent-lab-ppo}"
 : "${WANDB_PROJECT:=sb3_npg_mujoco_default}"
-: "${WANDB_GROUP:=npg_mujoco_iter_4_add_action_squash_new_obs_norm_no_reward_norm_popart}"
+: "${WANDB_GROUP:=npg_mujoco_iter_4_add_action_squash_new_obs_norm_no_reward_norm_popart_relu}"
 
 pids=()
 trap 'echo "Caught Ctrl+C, killing all runs..."; \
@@ -121,6 +121,9 @@ for ((i=0; i<${#mujoco_envs[@]}; i+=2)); do
         "gamma:${GAMMA}"
         "use_popart:${USE_POPART}"
         "action_squash:${ACTION_SQUASH}"
+        # 直接在脚本里覆盖激活函数（不改 yml）：RL-ZOO 会 eval(policy_kwargs)，其中 nn=torch.nn
+        # 注意：不要在这个字符串里留空格，避免 -params 的解析被 shell/argparse 拆开
+        "policy_kwargs:dict(net_arch=dict(pi=[256,256],vf=[256,256]),activation_fn=nn.ReLU,share_features_extractor=False,ortho_init=False)"
         "use_detach_obs_rms:${USE_DETACH_OBS_RMS}"
         "detach_recompute_pi_old:${DETACH_RECOMPUTE_PI_OLD}"
         "detach_obs_rms_eps:${DETACH_OBS_RMS_EPS}"
