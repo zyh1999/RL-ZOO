@@ -29,11 +29,25 @@ export torch_num_threads=1
 # 在这里改超参（默认值建议与 hyperparams/npg.yml 保持一致）
 # 说明：bool 请用 True/False（Python 可 eval 的字面量）
 # ============================================================
-GAMMA="${GAMMA:-0.99}"
+# 为了与 mingfei/detach（true_mlp.yaml + Runner/model_step）对齐：
+# - gamma=0.999
+# - use_popart=True（PopArt 在算法内部做尺度对齐）
+# - action_squash=True（tanh squash）
+# - 环境侧不做 obs normalize（改用算法内部的 detach obs_rms）
+# - 环境侧不做 reward normalize（mingfei env_config.norm_ret=False）
+GAMMA="${GAMMA:-0.999}"
 USE_POPART="${USE_POPART:-True}"
 ACTION_SQUASH="${ACTION_SQUASH:-True}"
-NORM_OBS="${NORM_OBS:-True}"
+NORM_OBS="${NORM_OBS:-False}"
 NORM_REWARD="${NORM_REWARD:-False}"
+
+# Detach-style obs normalization（算法内部 RunningMeanStd，rollout 用旧 stats，train 前更新 stats）
+USE_DETACH_OBS_RMS="${USE_DETACH_OBS_RMS:-True}"
+DETACH_RECOMPUTE_PI_OLD="${DETACH_RECOMPUTE_PI_OLD:-True}"
+DETACH_OBS_RMS_EPS="${DETACH_OBS_RMS_EPS:-1e-8}"
+# 对齐 mingfei/detach：obs 归一化后会做 clamp（mingfei 代码里是 [-5, 5]）
+# 这里默认用 5.0；如需更激进/保守可覆盖环境变量。
+DETACH_OBS_RMS_CLIP="${DETACH_OBS_RMS_CLIP:-5.0}"
 
 # GPU 轮询分配（默认 2 张卡；单卡可设 GPU_COUNT=1）
 GPU_COUNT="${GPU_COUNT:-2}"
@@ -47,17 +61,17 @@ mkdir -p logs/npg_mujoco
 seeds=(9 1 2 3)
 
 mujoco_envs=(
-  #"HalfCheetah-v4"
-  #"Hopper-v4"
-  #"Walker2d-v4"
+  "HalfCheetah-v4"
+  "Hopper-v4"
+  "Walker2d-v4"
   "Swimmer-v3"
-  #"Humanoid-v4"
+  "Humanoid-v4"
 )
 
 # W&B（默认对齐 a2c_mujoco 的风格；可用环境变量覆盖）
 : "${WANDB_ENTITY:=agent-lab-ppo}"
 : "${WANDB_PROJECT:=sb3_npg_mujoco_default}"
-: "${WANDB_GROUP:=npg_mujoco_iter_4_add_action_squash}"
+: "${WANDB_GROUP:=npg_mujoco_iter_4_add_action_squash_new_obs_norm}"
 
 pids=()
 trap 'echo "Caught Ctrl+C, killing all runs..."; \
@@ -71,7 +85,8 @@ echo "Starting NPG MuJoCo (default hyperparams) with env concurrency=2"
 echo "Envs: ${mujoco_envs[*]}"
 echo "Seeds: ${seeds[*]}"
 echo "Params override: gamma=${GAMMA}, use_popart=${USE_POPART}, action_squash=${ACTION_SQUASH}"
-echo "Normalize override: norm_obs=${NORM_OBS}, norm_reward=${NORM_REWARD}"
+echo "Detach obs RMS: use_detach_obs_rms=${USE_DETACH_OBS_RMS}, detach_recompute_pi_old=${DETACH_RECOMPUTE_PI_OLD}, eps=${DETACH_OBS_RMS_EPS}, clip=${DETACH_OBS_RMS_CLIP:-None}"
+echo "Normalize override (env VecNormalize): norm_obs=${NORM_OBS}, norm_reward=${NORM_REWARD}"
 
 for ((i=0; i<${#mujoco_envs[@]}; i+=2)); do
   batch_envs=("${mujoco_envs[@]:i:2}")
@@ -99,12 +114,26 @@ for ((i=0; i<${#mujoco_envs[@]}; i+=2)); do
       log_file="${log_dir}/seed${seed}.log"
 
       echo "  -> Launching env=${env_id}, seed=${seed}, gpu=${gpu} (log: ${log_file})"
+
+      # 组装 -params，避免空的 detach_obs_rms_clip 造成解析问题
+      PARAMS_ARGS=(
+        "gamma:${GAMMA}"
+        "use_popart:${USE_POPART}"
+        "action_squash:${ACTION_SQUASH}"
+        "use_detach_obs_rms:${USE_DETACH_OBS_RMS}"
+        "detach_recompute_pi_old:${DETACH_RECOMPUTE_PI_OLD}"
+        "detach_obs_rms_eps:${DETACH_OBS_RMS_EPS}"
+        "normalize:{'norm_obs':${NORM_OBS},'norm_reward':${NORM_REWARD}}"
+      )
+      if [[ -n "${DETACH_OBS_RMS_CLIP}" ]]; then
+        PARAMS_ARGS+=("detach_obs_rms_clip:${DETACH_OBS_RMS_CLIP}")
+      fi
+
       CUDA_VISIBLE_DEVICES="${gpu}" python -u train.py \
         --seed "${seed}" \
         --algo npg \
         --env "${env_id}" \
-        -params gamma:${GAMMA} use_popart:${USE_POPART} action_squash:${ACTION_SQUASH} \
-                normalize:"{'norm_obs':${NORM_OBS},'norm_reward':${NORM_REWARD}}" \
+        -params "${PARAMS_ARGS[@]}" \
         --track \
         --wandb-run-extra-name "${run_name}" \
         --wandb-project-name "${WANDB_PROJECT}" \
